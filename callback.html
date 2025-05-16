@@ -1,23 +1,23 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Deriv Callback</title>
-</head>
-<body>
-  <h2>Processing login...</h2>
-  <p id="status"></p>
-
-  <script>
+<script>
+  // Get token from hash or query string
+  function getToken() {
     const hash = window.location.hash;
-    const token = new URLSearchParams(hash.substring(1)).get("token") ||
-                  new URLSearchParams(hash.substring(1)).get("access_token");
+    const query = window.location.search;
 
-    if (token) {
-      document.getElementById("status").innerText = "Your token is: " + token;
-      // You can save it or redirect with it
-    } else {
-      document.getElementById("status").innerText = "Token not found (undefined)";
-    }
-  </script>
-</body>
-  </html>
+    const fromHash = new URLSearchParams(hash.substring(1)).get("token") ||
+                     new URLSearchParams(hash.substring(1)).get("access_token");
+    
+    const fromQuery = new URLSearchParams(query).get("token") ||
+                      new URLSearchParams(query).get("access_token");
+
+    return fromHash || fromQuery;
+  }
+
+  const token = getToken();
+
+  if (token) {
+    document.getElementById("status").innerText = "Your token is: " + token;
+  } else {
+    document.getElementById("status").innerText = "Token not found (undefined)";
+  }
+</script>
