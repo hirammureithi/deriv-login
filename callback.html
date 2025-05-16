@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>OAuth Callback</title>
+</head>
+<body>
+  <h2>OAuth Token Received</h2>
+  <script>
+    const token = window.location.hash.split('=')[1];
+    document.body.innerHTML += `<p><strong>Token:</strong> ${token}</p>`;
+  </script>
+</body>
+</html>
