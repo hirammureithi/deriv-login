@@ -1,13 +1,23 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>OAuth Callback</title>
+  <title>Deriv Callback</title>
 </head>
 <body>
-  <h2>OAuth Token Received</h2>
+  <h2>Processing login...</h2>
+  <p id="status"></p>
+
   <script>
-    const token = window.location.hash.split('=')[1];
-    document.body.innerHTML += `<p><strong>Token:</strong> ${token}</p>`;
+    const hash = window.location.hash;
+    const token = new URLSearchParams(hash.substring(1)).get("token") ||
+                  new URLSearchParams(hash.substring(1)).get("access_token");
+
+    if (token) {
+      document.getElementById("status").innerText = "Your token is: " + token;
+      // You can save it or redirect with it
+    } else {
+      document.getElementById("status").innerText = "Token not found (undefined)";
+    }
   </script>
 </body>
-</html>
+  </html>
