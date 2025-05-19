@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Deriv Dashboard</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    #tickBox {
+      padding: 10px;
+      background: #f5f5f5;
+      border-radius: 8px;
+      font-size: 24px;
+      margin-top: 20px;
+      font-weight: bold;
+      color: #2c3e50;
+    }
+  </style>
+</head>
+<body>
+  <h2>Deriv Dashboard</h2>
+  <p><strong>Status:</strong> <span id="status">Not connected</span></p>
+  <p><strong>Symbol:</strong> <span id="symbol">R_100</span></p>
+  <div id="tickBox">Waiting for price...</div>
+
+  <script>
+    const symbol = "R_100";  // You can change to "1HZ10V", "R_50", etc
+    const hashParams = new URLSearchParams(window.location.hash.slice(1));
+    const token = hashParams.get('access_token');
+
+    if (!token) {
+      document.getElementById('status').innerText = "Missing token. Login again from index.html";
+    } else {
+      const ws = new WebSocket("wss://ws.deriv.com/websockets/v3");
+
+      ws.onopen = () => {
+        document.getElementById('status').innerText = "Connected";
+
+        ws.send(JSON.stringify({ authorize: token }));
+      };
+
+      ws.onmessage = (msg) => {
+        const data = JSON.parse(msg.data);
+
+        if (data.msg_type === "authorize") {
+          ws.send(JSON.stringify({ ticks: symbol }));
+        }
+
+        if (data.msg_type === "tick") {
+          const price = data.tick.quote;
+          document.getElementById("tickBox").innerText = price.toFixed(5);
+        }
+      };
+    }
+  </script>
+</body>
+</html>
