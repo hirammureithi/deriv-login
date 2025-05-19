@@ -1,64 +1,86 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>Deriv Live Market</title>
+  <title>Deriv Login & Market Feed</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    .market { margin: 10px 0; font-size: 18px; }
+    .frozen { color: red; font-weight: bold; }
+  </style>
 </head>
 <body>
-  <h1>Deriv Login & Market Feed</h1>
-  <button onclick="login()">Login with Deriv</button>
-  <div id="account"></div>
-  <div id="markets"></div>
 
-  <script>
-    function login() {
-      const appId = 64585;
-      const redirectUri = 'https://hirammureithi.github.io/deriv-login/';
-      window.location.href = `https://oauth.deriv.com/oauth2/authorize?app_id=${appId}&redirect_uri=${redirectUri}`;
+<h2>Deriv Login & Market Feed</h2>
+<button id="login">Login with Deriv</button>
+<div id="output"></div>
+
+<script>
+const app_id = 64585;
+const redirect_uri = 'https://hirammureithi.github.io/deriv-login/';
+const urlHash = window.location.hash;
+const tokenMatch = urlHash.match(/access_token=([^&]+)/);
+const output = document.getElementById("output");
+
+if (tokenMatch) {
+  const token = tokenMatch[1];
+  const ws = new WebSocket("wss://ws.deriv.com/websockets/v3?app_id=" + app_id);
+
+  const symbols = ["R_100", "R_50", "R_25", "R_10", "R_75"];
+  const lastDigits = {};
+  const freezeCount = {};
+
+  ws.onopen = () => {
+    ws.send(JSON.stringify({ authorize: token }));
+  };
+
+  ws.onmessage = msg => {
+    const data = JSON.parse(msg.data);
+
+    if (data.msg_type === "authorize") {
+      output.innerHTML = "<p>Logged in successfully!</p>";
+      symbols.forEach(symbol => {
+        ws.send(JSON.stringify({ ticks: symbol }));
+        const div = document.createElement("div");
+        div.className = "market";
+        div.id = symbol;
+        div.textContent = symbol + ": Waiting...";
+        output.appendChild(div);
+      });
     }
 
-    const symbols = [
-      'R_10', 'R_25', 'R_50', 'R_75', 'R_100',
-      '1HZ10V', '1HZ25V', '1HZ50V', '1HZ75V', '1HZ100V',
-      'WS10', 'WS25', 'WS30', 'WS50', 'WS75', 'WS100'
-    ];
+    if (data.msg_type === "tick") {
+      const symbol = data.tick.symbol;
+      const quote = data.tick.quote;
+      const digit = String(quote).slice(-1);
 
-    const urlHash = window.location.hash;
-    const tokenMatch = urlHash.match(/access_token=([^&]+)/);
+      if (!lastDigits[symbol]) {
+        lastDigits[symbol] = digit;
+        freezeCount[symbol] = 0;
+      } else if (lastDigits[symbol] === digit) {
+        freezeCount[symbol]++;
+      } else {
+        freezeCount[symbol] = 0;
+        lastDigits[symbol] = digit;
+      }
 
-    if (tokenMatch) {
-      const accessToken = tokenMatch[1];
-      const accountDiv = document.getElementById("account");
-      const marketsDiv = document.getElementById("markets");
-
-      const ws = new WebSocket("wss://ws.deriv.com/websockets/v3?app_id=64585");
-
-      ws.onopen = () => {
-        ws.send(JSON.stringify({ authorize: accessToken }));
-      };
-
-      ws.onmessage = (msg) => {
-        const data = JSON.parse(msg.data);
-
-        if (data.msg_type === "authorize") {
-          accountDiv.innerHTML = `<p>Logged in as: ${data.authorize.loginid}</p>`;
-          // Subscribe to all symbols
-          symbols.forEach(symbol => {
-            ws.send(JSON.stringify({ ticks: symbol, subscribe: 1 }));
-            marketsDiv.innerHTML += `<div id="${symbol}">${symbol}: Loading...</div>`;
-          });
+      const div = document.getElementById(symbol);
+      if (div) {
+        if (freezeCount[symbol] >= 10) {
+          div.className = "market frozen";
+          div.textContent = `${symbol}: DIGIT FROZEN (${digit})`;
+        } else {
+          div.className = "market";
+          div.textContent = `${symbol}: ${quote.toFixed(5)} (Digit: ${digit})`;
         }
-
-        if (data.msg_type === "tick") {
-          const symbol = data.tick.symbol;
-          const price = data.tick.quote;
-          const element = document.getElementById(symbol);
-          if (element) {
-            element.textContent = `${symbol}: ${price}`;
-          }
-        }
-      };
+      }
     }
-  </script>
+  };
+} else {
+  document.getElementById("login").onclick = () => {
+    window.location.href = `https://oauth.deriv.com/oauth2/authorize?app_id=${app_id}&redirect_uri=${redirect_uri}`;
+  };
+}
+</script>
+
 </body>
 </html>
