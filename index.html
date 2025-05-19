@@ -2,86 +2,38 @@
 <html>
 <head>
   <title>Deriv Login & Market Feed</title>
-  <style>
-    body { font-family: Arial, sans-serif; padding: 20px; }
-    .market { margin: 10px 0; font-size: 18px; }
-    .frozen { color: red; font-weight: bold; }
-  </style>
 </head>
 <body>
+  <h2>Deriv Login & Market Feed</h2>
+  <button id="loginBtn">Login with Deriv</button>
+  <pre id="output"></pre>
 
-<h2>Deriv Login & Market Feed</h2>
-<button id="login">Login with Deriv</button>
-<div id="output"></div>
+  <script>
+    const app_id = 64585;
+    const redirect_uri = "https://hirammureithi.github.io/deriv-login/";
 
-<script>
-const app_id = 64585;
-const redirect_uri = 'https://hirammureithi.github.io/deriv-login/';
-const urlHash = window.location.hash;
-const tokenMatch = urlHash.match(/access_token=([^&]+)/);
-const output = document.getElementById("output");
+    // Redirect to Deriv login
+    document.getElementById("loginBtn").onclick = () => {
+      window.location.href = `https://oauth.deriv.com/oauth2/authorize?app_id=${app_id}&redirect_uri=${redirect_uri}`;
+    };
 
-if (tokenMatch) {
-  const token = tokenMatch[1];
-  const ws = new WebSocket("wss://ws.deriv.com/websockets/v3?app_id=" + app_id);
+    // If redirected back with token
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get("token1");
 
-  const symbols = ["R_100", "R_50", "R_25", "R_10", "R_75"];
-  const lastDigits = {};
-  const freezeCount = {};
+    if (token) {
+      const ws = new WebSocket("wss://ws.derivws.com/websockets/v3?app_id=" + app_id);
 
-  ws.onopen = () => {
-    ws.send(JSON.stringify({ authorize: token }));
-  };
+      ws.onopen = () => {
+        ws.send(JSON.stringify({ authorize: token }));
+        ws.send(JSON.stringify({ ticks: "R_100" })); // You can change to "1HZ10V", "digits" or other symbols
+      };
 
-  ws.onmessage = msg => {
-    const data = JSON.parse(msg.data);
-
-    if (data.msg_type === "authorize") {
-      output.innerHTML = "<p>Logged in successfully!</p>";
-      symbols.forEach(symbol => {
-        ws.send(JSON.stringify({ ticks: symbol }));
-        const div = document.createElement("div");
-        div.className = "market";
-        div.id = symbol;
-        div.textContent = symbol + ": Waiting...";
-        output.appendChild(div);
-      });
+      ws.onmessage = (msg) => {
+        const data = JSON.parse(msg.data);
+        document.getElementById("output").textContent += JSON.stringify(data, null, 2) + "\n";
+      };
     }
-
-    if (data.msg_type === "tick") {
-      const symbol = data.tick.symbol;
-      const quote = data.tick.quote;
-      const digit = String(quote).slice(-1);
-
-      if (!lastDigits[symbol]) {
-        lastDigits[symbol] = digit;
-        freezeCount[symbol] = 0;
-      } else if (lastDigits[symbol] === digit) {
-        freezeCount[symbol]++;
-      } else {
-        freezeCount[symbol] = 0;
-        lastDigits[symbol] = digit;
-      }
-
-      const div = document.getElementById(symbol);
-      if (div) {
-        if (freezeCount[symbol] >= 10) {
-          div.className = "market frozen";
-          div.textContent = `${symbol}: DIGIT FROZEN (${digit})`;
-        } else {
-          div.className = "market";
-          div.textContent = `${symbol}: ${quote.toFixed(5)} (Digit: ${digit})`;
-        }
-      }
-    }
-  };
-} else {
-  document.getElementById("login").onclick = () => {
-    window.location.href = `https://oauth.deriv.com/oauth2/authorize?app_id=${app_id}&redirect_uri=${redirect_uri}`;
-  };
-}
-</script>
-
-</bo
-  dy>
+  </script>
+</body>
   </html>
