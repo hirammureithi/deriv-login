@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Deriv Market Feed</title>
+</head>
+<body>
+  <h2>Market Feed</h2>
+  <div id="output">Connecting...</div>
+
+  <script>
+    // Extract token from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+
+    if (!token) {
+      document.getElementById('output').innerText = 'Login token not found.';
+    } else {
+      const ws = new WebSocket('wss://ws.deriv.com/websockets/v3');
+
+      ws.onopen = () => {
+        document.getElementById('output').innerText = 'Connected. Fetching market data...';
+
+        // Authorize user
+        ws.send(JSON.stringify({ authorize: token }));
+
+        // After authorize, get active symbols
+        ws.onmessage = (msg) => {
+          const data = JSON.parse(msg.data);
+          if (data.msg_type === 'authorize') {
+            ws.send(JSON.stringify({ active_symbols: 'brief', product_type: 'basic' }));
+          } else if (data.msg_type === 'active_symbols') {
+            const output = data.active_symbols.map(sym => `${sym.display_name} (${sym.symbol})`).join('<br>');
+            document.getElementById('output').innerHTML = output;
+          }
+        };
+      };
+    }
+  </script>
+</body>
+  </html>
